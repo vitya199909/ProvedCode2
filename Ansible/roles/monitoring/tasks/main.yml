@@ -1,0 +1,7 @@
+- name: Start Grafana + Loki + Prometheus Docker Compose
+  shell: |
+    cd /home/viktor/monitoring &&
+    docker compose down &&
+    docker compose up -d
+  args:
+    executable: /bin/bash

@@ -1,0 +1,17 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install common packages
+  apt:
+    name:
+      - git
+      - curl
+      - vim
+    state: present
+
+- name: Ensure Docker is installed
+  apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: yes

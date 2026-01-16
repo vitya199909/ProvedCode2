@@ -1,0 +1,6 @@
+---
+- name: Deploy application
+  hosts: all
+  tasks:
+    - name: Check uptime
+      ansible.builtin.command: uptime

@@ -1,0 +1,20 @@
+- hosts: all
+  become: true
+  roles:
+    - common
+
+- hosts: dbservers
+  become: true
+  roles:
+    - database
+
+- hosts: webservers
+  become: true
+  roles:
+    - backend
+    - frontend
+
+- hosts: monitoring
+  become: true
+  roles:
+    - monitoring
