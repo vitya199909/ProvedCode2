@@ -1,9 +1,6 @@
 variable "proxmox_host" {
   type = string
 }
-variable "proxmox_endpoint" {
-  type = string
-}
 variable "proxmox_api_token_id" {
   type      = string
 }

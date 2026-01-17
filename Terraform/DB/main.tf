@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "proxmox" {
-  pm_api_url          = var.proxmox_endpoint
+  pm_api_url          = "https://${var.proxmox_host}:8006/api2/json"
   pm_api_token_id     = var.proxmox_api_token_id
   pm_api_token_secret = var.proxmox_api_token_secret
   pm_tls_insecure     = true
@@ -35,7 +35,7 @@ resource "proxmox_lxc" "db" {
     name   = "eth0"
     bridge = "vmbr0"
     gw     = var.gateway_ip
-    ip     = var.db_ip
+    ip     = "${var.db_ip}/24"
     ip6    = "auto"
   }
 

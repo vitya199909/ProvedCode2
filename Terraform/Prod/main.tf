@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "proxmox" {
-  pm_api_url          = var.proxmox_endpoint
+  pm_api_url          = "https://${var.proxmox_host}:8006/api2/json"
   pm_api_token_id     = var.proxmox_api_token_id
   pm_api_token_secret = var.proxmox_api_token_secret
   pm_tls_insecure     = true
@@ -35,7 +35,7 @@ resource "proxmox_lxc" "nginx" {
     name   = "eth0"
     bridge = "vmbr0"
     gw     = var.gateway_ip
-    ip     = var.nginx_ip
+    ip     = "${var.nginx_ip}/24"
     ip6    = "auto"
   }
 
@@ -49,6 +49,7 @@ resource "null_resource" "setup_ssh_nginx" {
 
   provisioner "local-exec" {
     command = <<EOT
+ssh-keygen -f ~/.ssh/known_hosts -R ${var.nginx_ip}
 sleep 15
 sshpass -p "${var.proxmox_password}" \
 ssh -o StrictHostKeyChecking=no \
@@ -94,7 +95,7 @@ resource "proxmox_lxc" "backend1" {
     name   = "eth0"
     bridge = "vmbr0"
     gw     = var.gateway_ip
-    ip     = var.backend1_ip
+    ip     = "${var.backend1_ip}/24"
     ip6    = "auto"
   }
 
@@ -108,6 +109,7 @@ resource "null_resource" "setup_ssh_backend1" {
 
   provisioner "local-exec" {
     command = <<EOT
+ssh-keygen -f ~/.ssh/known_hosts -R ${var.backend1_ip}
 sleep 15
 sshpass -p "${var.proxmox_password}" \
 ssh -o StrictHostKeyChecking=no \
@@ -153,7 +155,7 @@ resource "proxmox_lxc" "backend2" {
     name   = "eth0"
     bridge = "vmbr0"
     gw     = var.gateway_ip
-    ip     = var.backend2_ip
+    ip     = "${var.backend2_ip}/24"
     ip6    = "auto"
   }
 
@@ -167,6 +169,7 @@ resource "null_resource" "setup_ssh_backend2" {
 
   provisioner "local-exec" {
     command = <<EOT
+ssh-keygen -f ~/.ssh/known_hosts -R ${var.backend2_ip}
 sleep 15
 sshpass -p "${var.proxmox_password}" \
 ssh -o StrictHostKeyChecking=no \
@@ -212,7 +215,7 @@ resource "proxmox_lxc" "backend3" {
     name   = "eth0"
     bridge = "vmbr0"
     gw     = var.gateway_ip
-    ip     = var.backend3_ip
+    ip     = "${var.backend3_ip}/24"
     ip6    = "auto"
   }
 
@@ -226,6 +229,7 @@ resource "null_resource" "setup_ssh_backend3" {
 
   provisioner "local-exec" {
     command = <<EOT
+ssh-keygen -f ~/.ssh/known_hosts -R ${var.backend3_ip}
 sleep 15
 sshpass -p "${var.proxmox_password}" \
 ssh -o StrictHostKeyChecking=no \
