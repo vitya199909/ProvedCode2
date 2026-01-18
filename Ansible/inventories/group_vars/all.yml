@@ -1,5 +1,2 @@
-docker_packages:
-  - docker.io
-  - docker-compose
 app_repo_frontend: "https://github.com/DevOps-ProjectLevel/provedcode-frontend-vitya199909.git"
 app_repo_backend: "https://github.com/DevOps-ProjectLevel/provedcode-backend-vitya199909.git"

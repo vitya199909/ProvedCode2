@@ -1,0 +1,43 @@
+- name: Install Terraform on Alpine (static binary)
+  hosts: tf1
+  become: true
+  vars:
+    terraform_version: "1.7.0"
+  tasks:
+    - name: Fix APK repositories
+      shell: |
+        echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
+        echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
+      args:
+        executable: /bin/sh
+
+    - name: Update APK cache
+      command: apk update
+
+    - name: Install required tools
+      apk:
+        name:
+          - curl
+          - unzip
+        state: present
+
+    - name: Download Terraform binary
+      get_url:
+        url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_amd64.zip"
+        dest: "/tmp/terraform.zip"
+        mode: '0644'
+
+    - name: Unzip Terraform into /usr/local/bin
+      unarchive:
+        src: "/tmp/terraform.zip"
+        dest: /usr/local/bin/
+        remote_src: yes
+        mode: '0755'
+
+    - name: Verify Terraform installation
+      command: terraform version
+      register: terraform_out
+      changed_when: false
+
+    - debug:
+        var: terraform_out.stdout

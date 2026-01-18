@@ -1,17 +1,28 @@
-- name: Update apt cache
-  apt:
-    update_cache: yes
+  - name: Install required packages
+    apk:
+      name:
+        - curl
+        - unzip
+      state: present
+      update_cache: yes
 
-- name: Install common packages
-  apt:
-    name:
-      - git
-      - curl
-      - vim
-    state: present
+  - name: Download Terraform
+    get_url:
+      url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_amd64.zip"
+      dest: "/tmp/terraform.zip"
+      mode: '0644'
 
-- name: Ensure Docker is installed
-  apt:
-    name: "{{ docker_packages }}"
-    state: present
-    update_cache: yes
+  - name: Unzip Terraform
+    unarchive:
+      src: "/tmp/terraform.zip"
+      dest: /usr/local/bin/
+      remote_src: yes
+      mode: '0755'
+
+  - name: Verify Terraform installation
+    command: terraform version
+    register: terraform_version_output
+    changed_when: false
+
+  - debug:
+      var: terraform_version_output.stdout
