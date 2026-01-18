@@ -1,0 +1,29 @@
+  - name: Ensure necessary packages are installed
+    apk:
+      name:
+        - bash
+        - curl
+        - unzip
+        - git
+        - zip
+      state: present
+
+  - name: Install OpenJDK 17
+    apk:
+      name: openjdk17
+      state: present
+
+  - name: Add Java 17 to PATH
+    lineinfile:
+      path: /etc/profile
+      line: 'export PATH=/usr/lib/jvm/java-17-openjdk/bin:$PATH'
+      state: present
+
+  - name: Check installed Java version
+    command: java -version
+    register: java_version_output
+    ignore_errors: yes
+
+  - name: Show installed Java version
+    debug:
+      msg: "Java version: {{ java_version_output.stderr_lines }}"

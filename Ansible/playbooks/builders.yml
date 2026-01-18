@@ -1,0 +1,7 @@
+---
+- name: Builders setup
+  hosts: builders
+  become: true
+
+  roles:
+    - builders

@@ -1,0 +1,6 @@
+---
+- import_tasks: frontend.yml
+  when: "'frontend_builders' in group_names"
+
+- import_tasks: backend.yml
+  when: "'backend_builders' in group_names"

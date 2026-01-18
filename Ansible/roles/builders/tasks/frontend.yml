@@ -1,0 +1,60 @@
+---
+- name: Ensure necessary packages for building Node.js are installed
+  apk:
+    name:
+      - bash
+      - curl
+      - unzip
+      - git
+      - zip
+      - python3
+      - python3-dev
+      - py3-setuptools
+      - linux-headers
+      - make
+      - g++
+      - libstdc++
+    state: present
+
+- name: Install nvm
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    if [ ! -d "$NVM_DIR" ]; then
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Install Node.js {{ node_version }} via nvm
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    nvm install {{ node_version }}
+    nvm alias default {{ node_version }}
+    nvm use {{ node_version }}
+  args:
+    executable: /bin/bash
+
+- name: Check Node version
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    node -v
+  register: node_version_out
+  args:
+    executable: /bin/bash
+
+- name: Check NPM version
+  shell: |
+    export NVM_DIR="$HOME/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    npm -v
+  register: npm_version_out
+  args:
+    executable: /bin/bash
+
+- name: Show installed versions
+  debug:
+    msg:
+      - "Node version: {{ node_version_out.stdout }}"
+      - "NPM version: {{ npm_version_out.stdout }}"

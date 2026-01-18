@@ -22,8 +22,8 @@ resource "proxmox_lxc" "build_front" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
-  memory     = 512
+  cores      = 4
+  memory     = 4096
   swap       = 256
   
   rootfs {
@@ -81,13 +81,13 @@ resource "proxmox_lxc" "build_back" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
-  memory     = 512
+  cores      = 4
+  memory     = 2048
   swap       = 256
   
   rootfs {
     storage = var.proxmox_disk
-    size    = "5G"
+    size    = "15G"
   }
   
   network {
