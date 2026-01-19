@@ -97,6 +97,17 @@
         -v /var/run/docker.sock:/var/run/docker.sock
         jenkins/jenkins:lts
 
+    - name: Wait for Jenkins container to start
+      pause:
+        seconds: 10
+
+    - name: Install sshpass in Jenkins container
+      shell: |
+        docker exec -u root jenkins bash -c "
+          apt-get update && 
+          apt-get install -y sshpass
+        "
+
     - name: Wait for Jenkins to start
       wait_for:
         port: 8080
