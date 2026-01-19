@@ -163,7 +163,12 @@ pipeline {
             }
         }
         
-        stage('Healtretry(3) {
+        stage('Health Check') {
+            steps {
+                script {
+                    // Check Frontend
+                    echo "Checking frontend health..."
+                    retry(3) {
                         sleep 5
                         sh """
                             curl -f -s -o /dev/null -w "%{http_code}" http://${PROD_NGINX_HOST} | grep -q 200
@@ -173,6 +178,7 @@ pipeline {
                     
                     // Check Backend servers
                     env.PROD_BACKEND_HOSTS.split(',').each { host ->
+                        echo "Checking backend ${host} health..."
                         retry(5) {
                             sleep 10
                             sh """
@@ -184,13 +190,7 @@ pipeline {
                         echo "✅ Backend ${host} is healthy!"
                     }
                     
-                    echo "🚀 All services are healthy and deployed successfull',').each { host ->
-                        sh """
-                            curl -f http://${host}:8080/health || exit 1
-                        """
-                    }
-                    
-                    echo "All services are healthy!"
+                    echo "🚀 All services are healthy and deployed successfully!"
                 }
             }
         }
