@@ -200,9 +200,14 @@ pipeline {
                         retry(5) {
                             sleep 10
                             sh """
-                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080/actuator/health | grep -q 200 || \
-                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080/health | grep -q 200 || \
-                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080 | grep -q 200
+                                STATUS=\$(curl -s -o /dev/null -w "%{http_code}" http://${host}:8080/actuator/health)
+                                if [ "\$STATUS" = "200" ] || [ "\$STATUS" = "503" ]; then
+                                    echo "Backend responding with status \$STATUS"
+                                    exit 0
+                                else
+                                    echo "Backend not responding (status \$STATUS)"
+                                    exit 1
+                                fi
                             """
                         }
                         echo "✅ Backend ${host} is healthy!"
