@@ -30,10 +30,16 @@
       command: docker rm jenkins
       ignore_errors: yes
 
-    - name: Remove old Jenkins data for clean start
+    - name: Check if Jenkins is initialized
+      stat:
+        path: /opt/jenkins/config.xml
+      register: jenkins_initialized
+
+    - name: Remove old Jenkins data only if not initialized
       file:
         path: /opt/jenkins
         state: absent
+      when: not jenkins_initialized.stat.exists
 
     - name: Create Jenkins directories
       file:
@@ -125,6 +131,16 @@
       shell: |
         docker cp /tmp/create-pipeline.groovy jenkins:/var/jenkins_home/init.groovy.d/02-create-pipeline.groovy
 
+    - name: Create SSH credential script
+      template:
+        src: templates/create-ssh-credential.groovy.j2
+        dest: /tmp/create-ssh-credential.groovy
+        mode: '0644'
+
+    - name: Copy SSH credential script to Jenkins
+      shell: |
+        docker cp /tmp/create-ssh-credential.groovy jenkins:/var/jenkins_home/init.groovy.d/03-create-ssh-credential.groovy
+
     - name: Restart Jenkins to execute pipeline creation
       command: docker restart jenkins
 
@@ -133,3 +149,26 @@
         port: 8080
         delay: 20
         timeout: 120
+
+    - name: Generate SSH key for Jenkins
+      shell: |
+        docker exec -u jenkins jenkins bash -c "
+          mkdir -p /var/jenkins_home/.ssh &&
+          chmod 700 /var/jenkins_home/.ssh &&
+          if [ ! -f /var/jenkins_home/.ssh/id_ed25519 ]; then
+            ssh-keygen -t ed25519 -C 'jenkins@provedcode' -f /var/jenkins_home/.ssh/id_ed25519 -N ''
+          fi
+        "
+      register: ssh_key_gen
+
+    - name: Get Jenkins public SSH key
+      shell: docker exec -u jenkins jenkins cat /var/jenkins_home/.ssh/id_ed25519.pub
+      register: jenkins_public_key
+
+    - name: Display Jenkins SSH public key
+      debug:
+        msg: 
+          - "==============================================="
+          - "Add this SSH key to GitHub Deploy Keys:"
+          - "{{ jenkins_public_key.stdout }}"
+          - "==============================================="
