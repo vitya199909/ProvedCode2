@@ -3,82 +3,26 @@
 import jenkins.model.*
 import hudson.security.*
 import jenkins.install.InstallState
-import hudson.PluginWrapper
-import org.jenkinsci.plugins.workflow.job.WorkflowJob
-import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition
-import hudson.plugins.git.GitSCM
-import hudson.plugins.git.BranchSpec
+
+println "=== Jenkins Initial Setup Starting ==="
 
 def instance = Jenkins.getInstance()
 
-// Install plugins automatically
-def pluginManager = instance.getPluginManager()
-def updateCenter = instance.getUpdateCenter()
-
-def plugins = [
-    "git",
-    "workflow-aggregator",  // Pipeline plugin
-    "docker-workflow",
-    "docker-plugin",
-    "kubernetes",
-    "blueocean",
-    "configuration-as-code",
-    "credentials-binding",
-    "ssh-agent"
-]
-
-println "Installing Jenkins plugins..."
-plugins.each { pluginName ->
-    if (!pluginManager.getPlugin(pluginName)) {
-        println "Installing plugin: ${pluginName}"
-        def plugin = updateCenter.getPlugin(pluginName)
-        if (plugin) {
-            plugin.deploy(true)
-        }
-    } else {
-        println "Plugin already installed: ${pluginName}"
-    }
-}
-
-// Create admin user
+println "Step 1: Creating admin user..."
 def hudsonRealm = new HudsonPrivateSecurityRealm(false)
 hudsonRealm.createAccount("admin", "{{ jenkins_admin_password | default('admin123') }}")
 instance.setSecurityRealm(hudsonRealm)
+println "Admin user created: admin"
 
-// Set authorization strategy
+println "Step 2: Setting authorization strategy..."
 def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
 strategy.setAllowAnonymousRead(false)
 instance.setAuthorizationStrategy(strategy)
+println "Authorization strategy set"
 
-// Skip initial setup wizard
+println "Step 3: Marking setup as complete..."
 instance.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
 
-// Create Pipeline Job
-println "Creating pipeline job..."
-def jobName = "{{ jenkins_pipeline_job_name | default('main-pipeline') }}"
-def gitRepo = "{{ jenkins_pipeline_git_repo | default('https://github.com/your-repo/your-project.git') }}"
-def gitBranch = "{{ jenkins_pipeline_git_branch | default('main') }}"
-def jenkinsfilePath = "{{ jenkins_pipeline_jenkinsfile_path | default('Jenkinsfile') }}"
-
-def job = instance.getItem(jobName)
-if (!job) {
-    job = instance.createProject(WorkflowJob.class, jobName)
-    
-    // Configure Git SCM
-    def scm = new GitSCM(gitRepo)
-    scm.branches = [new BranchSpec("*/${gitBranch}")]
-    
-    // Set Pipeline definition from SCM
-    def flowDefinition = new CpsScmFlowDefinition(scm, jenkinsfilePath)
-    flowDefinition.setLightweight(true)
-    job.setDefinition(flowDefinition)
-    
-    job.save()
-    println "Pipeline job '${jobName}' created successfully"
-} else {
-    println "Pipeline job '${jobName}' already exists"
-}
-
 instance.save()
-
-println "Jenkins initial setup completed. Admin user created, plugins installed, pipeline configured."
+println "=== Jenkins Initial Setup Completed ==="
+println "Login: admin / Password: {{ jenkins_admin_password | default('admin123') }}"

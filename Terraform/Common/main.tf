@@ -22,7 +22,7 @@ resource "proxmox_lxc" "jenkins" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
+  cores      = 4
   memory     = 1024
   swap       = 256
   

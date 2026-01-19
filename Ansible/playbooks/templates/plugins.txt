@@ -1,0 +1,5 @@
+git:latest
+workflow-aggregator:latest
+docker-workflow:latest
+ssh-slaves:latest
+credentials-binding:latest

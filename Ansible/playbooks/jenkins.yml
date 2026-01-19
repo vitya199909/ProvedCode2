@@ -22,6 +22,19 @@
         state: started
         enabled: yes
 
+    - name: Stop existing Jenkins container
+      command: docker stop jenkins
+      ignore_errors: yes
+
+    - name: Remove existing Jenkins container
+      command: docker rm jenkins
+      ignore_errors: yes
+
+    - name: Remove old Jenkins data for clean start
+      file:
+        path: /opt/jenkins
+        state: absent
+
     - name: Create Jenkins directories
       file:
         path: "/opt/jenkins/{{ item }}"
@@ -32,12 +45,28 @@
       loop:
         - ""
         - init.groovy.d
-        - plugins
+        - workspace
+
+    - name: Copy plugins list
+      template:
+        src: templates/plugins.txt
+        dest: /opt/jenkins/plugins.txt
+        owner: 1000
+        group: 1000
+        mode: '0644'
 
     - name: Jenkins init script
       template:
         src: templates/basic-security.groovy.j2
         dest: /opt/jenkins/init.groovy.d/basic-security.groovy
+        owner: 1000
+        group: 1000
+        mode: '0644'
+
+    - name: Copy jenkins.env configuration file
+      copy:
+        src: ../../jenkins/jenkins.env
+        dest: /opt/jenkins/workspace/jenkins.env
         owner: 1000
         group: 1000
         mode: '0644'
@@ -49,8 +78,50 @@
         --restart unless-stopped
         -p 8080:8080
         -p 50000:50000
+        -e JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
         -v /opt/jenkins:/var/jenkins_home
         -v /var/run/docker.sock:/var/run/docker.sock
         jenkins/jenkins:lts
-      args:
-        creates: /opt/jenkins/config.xml
+
+    - name: Wait for Jenkins to start
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 120
+
+    - name: Install Jenkins plugins
+      shell: |
+        docker exec jenkins jenkins-plugin-cli --plugins git workflow-aggregator docker-workflow ssh-slaves credentials-binding
+      ignore_errors: yes
+
+    - name: Restart Jenkins to apply plugins
+      command: docker restart jenkins
+
+    - name: Wait for Jenkins to restart
+      wait_for:
+        port: 8080
+        delay: 15
+        timeout: 120
+
+    - name: Wait for Jenkins to be fully ready
+      pause:
+        seconds: 30
+
+    - name: Create pipeline job configuration script
+      template:
+        src: templates/create-pipeline.groovy.j2
+        dest: /tmp/create-pipeline.groovy
+        mode: '0644'
+
+    - name: Copy script to Jenkins container
+      shell: |
+        docker cp /tmp/create-pipeline.groovy jenkins:/var/jenkins_home/init.groovy.d/02-create-pipeline.groovy
+
+    - name: Restart Jenkins to execute pipeline creation
+      command: docker restart jenkins
+
+    - name: Wait for Jenkins final startup
+      wait_for:
+        port: 8080
+        delay: 20
+        timeout: 120

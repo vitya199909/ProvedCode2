@@ -111,17 +111,9 @@ pipeline {
         
         stage('Deploy to Production') {
             steps {
-                script {# Copy build artifact
-                        sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no frontend-build.tar.gz root@${PROD_NGINX_HOST}:/tmp/
-                        
-                        # Deploy to nginx
-                        sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${PROD_NGINX_HOST} '
-                            cd /var/www/html &&
-                            rm -rf * &&
-                            tar -xzf /tmp/frontend-build.tar.gz &&
-                            mv dist/* . &&
-                            rmdir dist &&
-                            chown -R nginx:nginx /var/www/html
+                script {
+                    // Deploy Frontend to nginx
+                    sh """
                         sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no frontend-build.tar.gz root@${PROD_NGINX_HOST}:/tmp/
                         sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${PROD_NGINX_HOST} '
                             cd /var/www/html &&
