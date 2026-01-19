@@ -4,7 +4,7 @@
   become: true
 
   vars:
-    pg_data_dir: /var/lib/postgresql/data
+    pg_data_dir: /var/lib/postgresql/17/data
 
   tasks:
     - name: Update apk repositories
@@ -36,6 +36,30 @@
         state: started
         enabled: true
 
+    - name: Configure PostgreSQL to listen on all interfaces
+      lineinfile:
+        path: "{{ pg_data_dir }}/postgresql.conf"
+        regexp: "^#listen_addresses = 'localhost'"
+        line: "listen_addresses = '*'"
+        state: present
+      notify: restart postgresql
+
+    - name: Configure PostgreSQL client authentication
+      lineinfile:
+        path: "{{ pg_data_dir }}/pg_hba.conf"
+        line: "host    all             all             0.0.0.0/0               md5"
+        insertbefore: "^# IPv4 local connections:"
+        state: present
+      notify: restart postgresql
+
+    - name: Flush handlers to apply configuration before connecting
+      meta: flush_handlers
+
+    - name: Ensure PostgreSQL service is restarted after configuration
+      service:
+        name: postgresql
+        state: restarted
+
     - name: Initialize PostgreSQL database (if not exists)
       command: su - postgres -c "initdb -D {{ pg_data_dir }}"
       args:
@@ -44,14 +68,14 @@
     - name: Ensure PostgreSQL database exists
       community.postgresql.postgresql_db:
         name: "{{ hostvars[inventory_hostname].postgres_db }}"
-        login_user: "{{ hostvars[inventory_hostname].postgres_user }}"
-        login_password: "{{ hostvars[inventory_hostname].postgres_password }}"
+        login_user: postgres
         state: present
 
     - name: Ensure PostgreSQL user exists
       community.postgresql.postgresql_user:
         name: "{{ hostvars[inventory_hostname].postgres_user }}"
         password: "{{ hostvars[inventory_hostname].postgres_password }}"
+        login_user: postgres
         state: present
 
     - name: Grant privileges to user on database
@@ -60,6 +84,8 @@
         roles: "{{ hostvars[inventory_hostname].postgres_user }}"
         type: database
         privs: ALL
+        login_user: postgres
+
     - name: Check PostgreSQL is up
       community.postgresql.postgresql_ping:
         login_user: "{{ hostvars[inventory_hostname].postgres_user }}"
@@ -70,3 +96,9 @@
     - name: Show PostgreSQL ping result
       debug:
         var: pg_status
+
+  handlers:
+    - name: restart postgresql
+      service:
+        name: postgresql
+        state: restarted

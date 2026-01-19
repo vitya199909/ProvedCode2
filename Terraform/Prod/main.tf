@@ -22,7 +22,7 @@ resource "proxmox_lxc" "nginx" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
+  cores      = 4
   memory     = 512
   swap       = 256
   
@@ -100,7 +100,7 @@ resource "proxmox_lxc" "backend1" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
+  cores      = 4
   memory     = 512
   swap       = 256
   
@@ -178,7 +178,7 @@ resource "proxmox_lxc" "backend2" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
+  cores      = 4
   memory     = 512
   swap       = 256
   
@@ -256,7 +256,7 @@ resource "proxmox_lxc" "backend3" {
 
   ostemplate = "local:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz"
 
-  cores      = 1
+  cores      = 4
   memory     = 512
   swap       = 256
   
