@@ -184,6 +184,36 @@
           - "{{ jenkins_public_key.stdout }}"
           - "==============================================="
 
+    - name: Save Jenkins public key for later use
+      set_fact:
+        jenkins_ssh_key: "{{ jenkins_public_key.stdout }}"
+
+    - name: Configure SSH access to build servers
+      delegate_to: "{{ item }}"
+      shell: |
+        mkdir -p /root/.ssh
+        chmod 700 /root/.ssh
+        echo "{{ jenkins_ssh_key }}" >> /root/.ssh/authorized_keys
+        chmod 600 /root/.ssh/authorized_keys
+      loop:
+        - 192.168.1.205
+        - 192.168.1.206
+      ignore_errors: yes
+
+    - name: Configure SSH access to production servers
+      delegate_to: "{{ item }}"
+      shell: |
+        mkdir -p /root/.ssh
+        chmod 700 /root/.ssh
+        echo "{{ jenkins_ssh_key }}" >> /root/.ssh/authorized_keys
+        chmod 600 /root/.ssh/authorized_keys
+      loop:
+        - 192.168.1.200
+        - 192.168.1.201
+        - 192.168.1.202
+        - 192.168.1.203
+      ignore_errors: yes
+
     - name: Configure Git to accept GitHub host key
       shell: |
         docker exec -u jenkins jenkins bash -c "
