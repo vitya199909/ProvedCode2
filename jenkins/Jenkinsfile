@@ -1,0 +1,153 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Git repositories
+        FRONTEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-frontend-vitya199909.git'
+        BACKEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-backend-vitya199909.git'
+        GIT_BRANCH = 'main'
+        
+        // Build servers
+        BUILD_FRONT_HOST = '192.168.1.205'
+        BUILD_BACK_HOST = '192.168.1.206'
+        
+        // Production servers
+        PROD_BACKEND_HOSTS = '192.168.1.201,192.168.1.202,192.168.1.203'
+        PROD_NGINX_HOST = '192.168.1.200'
+        
+        // Ansible
+        ANSIBLE_DIR = '/home/viktor/ProvedCode2/Ansible'
+        SSH_PASS = credentials('ssh-password')
+    }
+    
+    stages {
+        stage('Checkout Code') {
+            parallel {
+                stage('Checkout Frontend') {
+                    steps {
+                        dir('frontend') {
+                            git branch: "${GIT_BRANCH}", url: "${FRONTEND_REPO}"
+                        }
+                    }
+                }
+                stage('Checkout Backend') {
+                    steps {
+                        dir('backend') {
+                            git branch: "${GIT_BRANCH}", url: "${BACKEND_REPO}"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build') {
+            parallel {
+                stage('Build Frontend') {
+                    steps {
+                        script {
+                            echo "Building Frontend on ${BUILD_FRONT_HOST}"
+                            sh """
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no frontend/ root@${BUILD_FRONT_HOST}:/tmp/frontend/
+                                sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST} '
+                                    cd /tmp/frontend &&
+                                    export NVM_DIR="\$HOME/.nvm" &&
+                                    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" &&
+                                    npm install &&
+                                    npm run build &&
+                                    tar -czf frontend-build.tar.gz dist/
+                                '
+                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST}:/tmp/frontend/frontend-build.tar.gz ./
+                            """
+                            archiveArtifacts artifacts: 'frontend-build.tar.gz', fingerprint: true
+                        }
+                    }
+                }
+                
+                stage('Build Backend') {
+                    steps {
+                        script {
+                            echo "Building Backend on ${BUILD_BACK_HOST}"
+                            sh """
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no backend/ root@${BUILD_BACK_HOST}:/tmp/backend/
+                                sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST} '
+                                    cd /tmp/backend &&
+                                    mvn clean package &&
+                                    tar -czf backend-build.tar.gz target/*.jar
+                                '
+                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST}:/tmp/backend/backend-build.tar.gz ./
+                            """
+                            archiveArtifacts artifacts: 'backend-build.tar.gz', fingerprint: true
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            steps {
+                script {
+                    echo "Deploying to Production servers"
+                    
+                    // Deploy Frontend to Nginx
+                    sh """
+                        sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no frontend-build.tar.gz root@${PROD_NGINX_HOST}:/tmp/
+                        sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${PROD_NGINX_HOST} '
+                            cd /var/www/html &&
+                            rm -rf * &&
+                            tar -xzf /tmp/frontend-build.tar.gz -C . &&
+                            mv dist/* . &&
+                            rmdir dist
+                        '
+                    """
+                    
+                    // Deploy Backend to all backend servers
+                    env.PROD_BACKEND_HOSTS.split(',').each { host ->
+                        sh """
+                            sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no backend-build.tar.gz root@${host}:/tmp/
+                            sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${host} '
+                                cd /opt/backend &&
+                                tar -xzf /tmp/backend-build.tar.gz &&
+                                docker compose down &&
+                                docker compose up -d --build
+                            '
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                script {
+                    echo "Running health checks..."
+                    
+                    // Check Frontend
+                    sh """
+                        curl -f http://${PROD_NGINX_HOST} || exit 1
+                    """
+                    
+                    // Check Backend servers
+                    env.PROD_BACKEND_HOSTS.split(',').each { host ->
+                        sh """
+                            curl -f http://${host}:8080/health || exit 1
+                        """
+                    }
+                    
+                    echo "All services are healthy!"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Pipeline completed successfully! 🚀"
+        }
+        failure {
+            echo "Pipeline failed! ❌"
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
