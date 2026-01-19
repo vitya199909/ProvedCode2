@@ -145,14 +145,14 @@ pipeline {
                                 set -e
                                 mkdir -p /opt/backend
                                 tar -xzf /tmp/backend-build.tar.gz -C /opt/backend
-                                JAR_FILE=$(ls /opt/backend/target/*.jar | head -n 1)
+                                JAR_FILE=\$(ls /opt/backend/target/*.jar | head -n 1)
                                 docker stop backend-app 2>/dev/null || true
                                 docker rm backend-app 2>/dev/null || true
                                 docker run -d \\
                                   --name backend-app \\
                                   --restart unless-stopped \\
                                   -p 8080:8080 \\
-                                  -v "$JAR_FILE":/app/app.jar \\
+                                  -v "\$JAR_FILE":/app/app.jar \\
                                   -e JAVA_OPTS="-Xmx512m -Xms256m" \\
                                   -e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}" \\
                                   -e DB_LOGIN="${DB_LOGIN}" \\
@@ -165,7 +165,7 @@ pipeline {
                                   -e EMAIL_USER="${EMAIL_USER}" \\
                                   -e EMAIL_PASSWORD="${EMAIL_PASSWORD}" \\
                                   eclipse-temurin:17-jdk-alpine \\
-                                  sh -c "java $JAVA_OPTS -jar /app/app.jar"
+                                  sh -c "java \$JAVA_OPTS -jar /app/app.jar"
                             '
                         """
                     }
