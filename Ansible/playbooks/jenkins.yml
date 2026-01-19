@@ -63,6 +63,14 @@
         group: 1000
         mode: '0644'
 
+    - name: Create credentials init script
+      template:
+        src: templates/create-credentials.groovy.j2
+        dest: /opt/jenkins/init.groovy.d/01-create-credentials.groovy
+        owner: 1000
+        group: 1000
+        mode: '0644'
+
     - name: Copy jenkins.env configuration file
       copy:
         src: ../../jenkins/jenkins.env

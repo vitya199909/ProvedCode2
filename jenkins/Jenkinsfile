@@ -2,40 +2,37 @@ pipeline {
     agent any
     
     environment {
-        // Load configuration from file
-        CONFIG_FILE = "${WORKSPACE}/../jenkins.env"
+        // Build servers
+        BUILD_FRONT_HOST = '192.168.1.205'
+        BUILD_BACK_HOST = '192.168.1.206'
+        
+        // Production servers
+        PROD_BACKEND_HOSTS = '192.168.1.201,192.168.1.202,192.168.1.203'
+        PROD_NGINX_HOST = '192.168.1.200'
+        
+        // Git configuration
+        GIT_BRANCH = 'main'
+        FRONTEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-frontend-vitya199909.git'
+        BACKEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-backend-vitya199909.git'
+        
+        // Frontend build configuration
+        REACT_APP_BASE_URL = 'http://192.168.1.200/api'
+        
+        // Backend runtime configuration (non-sensitive)
+        SPRING_PROFILES_ACTIVE = 'prod'
+        DB_URL = '192.168.1.204:5432/mydb'
+        S3_REGION = 'us-west-1'
+        BUCKET = 'my-bucket'
         
         // Credentials
         SSH_PASS = credentials('ssh-password')
+        DB_LOGIN = credentials('db-login')
+        DB_PASSWORD = credentials('db-password')
+        S3_ACCESS_KEY = credentials('s3-access-key')
+        S3_SECRET_KEY = credentials('s3-secret-key')
     }
     
     stages {
-        stage('Load Configuration') {
-            steps {
-                script {
-                    // Load environment variables from config file
-                    def props = readProperties file: '/var/jenkins_home/workspace/jenkins.env'
-                    env.BUILD_FRONT_HOST = props.BUILD_FRONT_HOST
-                    env.BUILD_BACK_HOST = props.BUILD_BACK_HOST
-                    env.PROD_BACKEND_HOSTS = props.PROD_BACKEND_HOSTS
-                    env.PROD_NGINX_HOST = props.PROD_NGINX_HOST
-                    env.GIT_BRANCH = props.GIT_BRANCH
-                    env.FRONTEND_REPO = props.FRONTEND_REPO
-                    env.BACKEND_REPO = props.BACKEND_REPO
-                    env.REACT_APP_BASE_URL = props.REACT_APP_BASE_URL
-                    env.SPRING_PROFILES_ACTIVE = props.SPRING_PROFILES_ACTIVE
-                    env.DB_LOGIN = props.DB_LOGIN
-                    env.DB_PASSWORD = props.DB_PASSWORD
-                    env.DB_URL = props.DB_URL
-                    env.S3_ACCESS_KEY = props.S3_ACCESS_KEY
-                    env.S3_SECRET_KEY = props.S3_SECRET_KEY
-                    env.S3_REGION = props.S3_REGION
-                    env.BUCKET = props.BUCKET
-                    env.EMAIL_USER = props.EMAIL_USER ?: ''
-                    env.EMAIL_PASSWORD = props.EMAIL_PASSWORD ?: ''
-                }
-            }
-        }
         stage('Checkout Code') {
             parallel {
                 stage('Checkout Frontend') {
@@ -204,7 +201,8 @@ pipeline {
             echo "Pipeline failed! ❌"
         }
         always {
-            cleanWs()
+            echo "Cleaning up workspace..."
+            deleteDir()
         }
     }
 }
