@@ -1,14 +1,43 @@
-- name: Clone backend repo
-  git:
-    repo: "{{ app_repo_backend }}"
-    dest: /home/viktor/backend
-    version: main
-    force: yes
+- name: Install Docker and dependencies
+  apk:
+    name:
+      - docker
+      - bash
+      - curl
+    state: present
 
-- name: Start backend Docker Compose
+- name: Enable and start Docker
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Pull Java 17 Docker image
+  command: docker pull eclipse-temurin:17-jdk-alpine
+
+- name: Create backend application directory
+  file:
+    path: /opt/backend
+    state: directory
+    mode: '0755'
+
+- name: Create placeholder jar file
+  copy:
+    dest: /opt/backend/app.jar
+    content: ""
+    mode: '0644'
+    force: false
+
+- name: Start empty backend container (placeholder)
   shell: |
-    cd /home/viktor/backend &&
-    docker compose down &&
-    docker compose up -d --build
+    docker stop backend-app 2>/dev/null || true
+    docker rm backend-app 2>/dev/null || true
+    docker run -d \
+      --name backend-app \
+      --restart unless-stopped \
+      -p 8080:8080 \
+      -v /opt/backend/app.jar:/app/app.jar \
+      eclipse-temurin:17-jdk-alpine \
+      tail -f /dev/null
   args:
     executable: /bin/bash

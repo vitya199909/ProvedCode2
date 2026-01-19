@@ -1,14 +1,41 @@
-- name: Clone frontend repo
-  git:
-    repo: "{{ app_repo_frontend }}"
-    dest: /home/viktor/frontend
-    version: main
-    force: yes
+- name: Install nginx and dependencies
+  apk:
+    name:
+      - nginx
+      - bash
+      - curl
+    state: present
 
-- name: Start frontend Docker Compose
-  shell: |
-    cd /home/viktor/frontend &&
-    docker compose down &&
-    docker compose up -d --build
-  args:
-    executable: /bin/bash
+- name: Enable and start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Create web root directory
+  file:
+    path: /var/www/html
+    state: directory
+    mode: '0755'
+    owner: nginx
+    group: nginx
+
+- name: Create placeholder index.html
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    mode: '0644'
+    owner: nginx
+    group: nginx
+    force: false
+
+- name: Configure nginx for frontend
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/http.d/default.conf
+    mode: '0644'
+
+- name: Reload nginx configuration
+  service:
+    name: nginx
+    state: reloaded

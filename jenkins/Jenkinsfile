@@ -2,25 +2,40 @@ pipeline {
     agent any
     
     environment {
-        // Git repositories
-        FRONTEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-frontend-vitya199909.git'
-        BACKEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-backend-vitya199909.git'
-        GIT_BRANCH = 'main'
+        // Load configuration from file
+        CONFIG_FILE = "${WORKSPACE}/../jenkins.env"
         
-        // Build servers
-        BUILD_FRONT_HOST = '192.168.1.205'
-        BUILD_BACK_HOST = '192.168.1.206'
-        
-        // Production servers
-        PROD_BACKEND_HOSTS = '192.168.1.201,192.168.1.202,192.168.1.203'
-        PROD_NGINX_HOST = '192.168.1.200'
-        
-        // Ansible
-        ANSIBLE_DIR = '/home/viktor/ProvedCode2/Ansible'
+        // Credentials
         SSH_PASS = credentials('ssh-password')
     }
     
     stages {
+        stage('Load Configuration') {
+            steps {
+                script {
+                    // Load environment variables from config file
+                    def props = readProperties file: '/var/jenkins_home/workspace/jenkins.env'
+                    env.BUILD_FRONT_HOST = props.BUILD_FRONT_HOST
+                    env.BUILD_BACK_HOST = props.BUILD_BACK_HOST
+                    env.PROD_BACKEND_HOSTS = props.PROD_BACKEND_HOSTS
+                    env.PROD_NGINX_HOST = props.PROD_NGINX_HOST
+                    env.GIT_BRANCH = props.GIT_BRANCH
+                    env.FRONTEND_REPO = props.FRONTEND_REPO
+                    env.BACKEND_REPO = props.BACKEND_REPO
+                    env.REACT_APP_BASE_URL = props.REACT_APP_BASE_URL
+                    env.SPRING_PROFILES_ACTIVE = props.SPRING_PROFILES_ACTIVE
+                    env.DB_LOGIN = props.DB_LOGIN
+                    env.DB_PASSWORD = props.DB_PASSWORD
+                    env.DB_URL = props.DB_URL
+                    env.S3_ACCESS_KEY = props.S3_ACCESS_KEY
+                    env.S3_SECRET_KEY = props.S3_SECRET_KEY
+                    env.S3_REGION = props.S3_REGION
+                    env.BUCKET = props.BUCKET
+                    env.EMAIL_USER = props.EMAIL_USER ?: ''
+                    env.EMAIL_PASSWORD = props.EMAIL_PASSWORD ?: ''
+                }
+            }
+        }
         stage('Checkout Code') {
             parallel {
                 stage('Checkout Frontend') {
@@ -47,16 +62,22 @@ pipeline {
                         script {
                             echo "Building Frontend on ${BUILD_FRONT_HOST}"
                             sh """
-                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no frontend/ root@${BUILD_FRONT_HOST}:/tmp/frontend/
+                                # Copy source code
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no frontend/ root@${BUILD_FRONT_HOST}:/tmp/frontend-build/
+                                
+                                # Build using Docker with environment variables
                                 sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST} '
-                                    cd /tmp/frontend &&
-                                    export NVM_DIR="\$HOME/.nvm" &&
-                                    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" &&
-                                    npm install &&
-                                    npm run build &&
+                                    cd /tmp/frontend-build &&
+                                    docker run --rm \
+                                      -v "\$(pwd)":/workspace \
+                                      -w /workspace \
+                                      -e REACT_APP_BASE_URL="${REACT_APP_BASE_URL}" \
+                                      node:18-alpine sh -c "npm install && npm run build" &&
                                     tar -czf frontend-build.tar.gz dist/
                                 '
-                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST}:/tmp/frontend/frontend-build.tar.gz ./
+                                
+                                # Copy artifact back
+                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST}:/tmp/frontend-build/frontend-build.tar.gz ./
                             """
                             archiveArtifacts artifacts: 'frontend-build.tar.gz', fingerprint: true
                         }
@@ -68,13 +89,18 @@ pipeline {
                         script {
                             echo "Building Backend on ${BUILD_BACK_HOST}"
                             sh """
-                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no backend/ root@${BUILD_BACK_HOST}:/tmp/backend/
+                                # Copy source code
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no backend/ root@${BUILD_BACK_HOST}:/tmp/backend-build/
+                                
+                                # Build using Docker Maven wrapper
                                 sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST} '
-                                    cd /tmp/backend &&
-                                    mvn clean package &&
+                                    cd /tmp/backend-build &&
+                                    docker run --rm -v "\$(pwd)":/workspace -v "\$HOME/.m2":/root/.m2 -w /workspace maven:3.9-eclipse-temurin-17-alpine mvn clean package &&
                                     tar -czf backend-build.tar.gz target/*.jar
                                 '
-                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST}:/tmp/backend/backend-build.tar.gz ./
+                                
+                                # Copy artifact back
+                                sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST}:/tmp/backend-build/backend-build.tar.gz ./
                             """
                             archiveArtifacts artifacts: 'backend-build.tar.gz', fingerprint: true
                         }
@@ -85,30 +111,59 @@ pipeline {
         
         stage('Deploy to Production') {
             steps {
-                script {
-                    echo "Deploying to Production servers"
-                    
-                    // Deploy Frontend to Nginx
-                    sh """
+                script {# Copy build artifact
+                        sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no frontend-build.tar.gz root@${PROD_NGINX_HOST}:/tmp/
+                        
+                        # Deploy to nginx
+                        sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${PROD_NGINX_HOST} '
+                            cd /var/www/html &&
+                            rm -rf * &&
+                            tar -xzf /tmp/frontend-build.tar.gz &&
+                            mv dist/* . &&
+                            rmdir dist &&
+                            chown -R nginx:nginx /var/www/html
                         sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no frontend-build.tar.gz root@${PROD_NGINX_HOST}:/tmp/
                         sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${PROD_NGINX_HOST} '
                             cd /var/www/html &&
                             rm -rf * &&
-                            tar -xzf /tmp/frontend-build.tar.gz -C . &&
-                            mv dist/* . &&
-                            rmdir dist
+                            tar -xzf /tmp/frontend-build.tar.gz &&
+                            nginx -s reload
                         '
                     """
                     
                     // Deploy Backend to all backend servers
                     env.PROD_BACKEND_HOSTS.split(',').each { host ->
                         sh """
+                            # Copy jar file to backend server
                             sshpass -p '${SSH_PASS}' scp -o StrictHostKeyChecking=no backend-build.tar.gz root@${host}:/tmp/
+                            
+                            # Extract and deploy
                             sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${host} '
-                                cd /opt/backend &&
-                                tar -xzf /tmp/backend-build.tar.gz &&
-                                docker compose down &&
-                                docker compose up -d --build
+                                cd /tmp && with environment variables
+                                docker stop backend-app 2>/dev/null || true &&
+                                docker rm backend-app 2>/dev/null || true &&
+                                docker run -d \\
+                                  --name backend-app \\
+                                  --restart unless-stopped \\
+                                  -p 8080:8080 \\
+                                  -v /opt/backend/app.jar:/app/app.jar \\
+                                  -e JAVA_OPTS=\"-Xmx512m -Xms256m\" \\
+                                  -e SPRING_PROFILES_ACTIVE=\"${SPRING_PROFILES_ACTIVE}\" \\
+                                  -e DB_LOGIN=\"${DB_LOGIN}\" \\
+                                  -e DB_PASSWORD=\"${DB_PASSWORD}\" \\
+                                  -e DB_URL=\"${DB_URL}\" \\
+                                  -e S3_ACCESS_KEY=\"${S3_ACCESS_KEY}\" \\
+                                  -e S3_SECRET_KEY=\"${S3_SECRET_KEY}\" \\
+                                  -e S3_REGION=\"${S3_REGION}\" \\
+                                  -e BUCKET=\"${BUCKET}\" \\
+                                  -e EMAIL_USER=\"${EMAIL_USER}\" \\
+                                  -e EMAIL_PASSWORD=\"${EMAIL_PASSWORD}
+                                  --restart unless-stopped \\
+                                  -p 8080:8080 \\
+                                  -v /opt/backend/app.jar:/app/app.jar \\
+                                  -e JAVA_OPTS=\"-Xmx512m -Xms256m\" \\
+                                  eclipse-temurin:17-jdk-alpine \\
+                                  java -jar /app/app.jar
                             '
                         """
                     }
@@ -116,18 +171,28 @@ pipeline {
             }
         }
         
-        stage('Health Check') {
-            steps {
-                script {
-                    echo "Running health checks..."
-                    
-                    // Check Frontend
-                    sh """
-                        curl -f http://${PROD_NGINX_HOST} || exit 1
-                    """
+        stage('Healtretry(3) {
+                        sleep 5
+                        sh """
+                            curl -f -s -o /dev/null -w "%{http_code}" http://${PROD_NGINX_HOST} | grep -q 200
+                        """
+                    }
+                    echo "✅ Frontend is healthy!"
                     
                     // Check Backend servers
                     env.PROD_BACKEND_HOSTS.split(',').each { host ->
+                        retry(5) {
+                            sleep 10
+                            sh """
+                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080/actuator/health | grep -q 200 || \
+                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080/health | grep -q 200 || \
+                                curl -f -s -o /dev/null -w "%{http_code}" http://${host}:8080 | grep -q 200
+                            """
+                        }
+                        echo "✅ Backend ${host} is healthy!"
+                    }
+                    
+                    echo "🚀 All services are healthy and deployed successfull',').each { host ->
                         sh """
                             curl -f http://${host}:8080/health || exit 1
                         """

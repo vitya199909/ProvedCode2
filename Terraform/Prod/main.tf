@@ -40,12 +40,30 @@ resource "proxmox_lxc" "nginx" {
   }
 
   unprivileged = false
-  start = true
+  start = false
   password = var.node_pass_nginx
 
 }
-resource "null_resource" "setup_ssh_nginx" {
+resource "null_resource" "enable_nesting_nginx" {
   depends_on = [proxmox_lxc.nginx]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_nginx} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_nginx}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_nginx}.conf && \
+     (pct status ${var.vmid_nginx} | grep -q running || pct start ${var.vmid_nginx})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_nginx" {
+  depends_on = [null_resource.enable_nesting_nginx]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -100,12 +118,30 @@ resource "proxmox_lxc" "backend1" {
   }
 
   unprivileged = false
-  start = true
+  start = false
   password = var.node_pass_backend
 
 }
-resource "null_resource" "setup_ssh_backend1" {
+resource "null_resource" "enable_nesting_backend1" {
   depends_on = [proxmox_lxc.backend1]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_backend1} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_backend1}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_backend1}.conf && \
+     (pct status ${var.vmid_backend1} | grep -q running || pct start ${var.vmid_backend1})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_backend1" {
+  depends_on = [null_resource.enable_nesting_backend1]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -160,12 +196,30 @@ resource "proxmox_lxc" "backend2" {
   }
 
   unprivileged = false
-  start = true
+  start = false
   password = var.node_pass_backend
 
 }
-resource "null_resource" "setup_ssh_backend2" {
+resource "null_resource" "enable_nesting_backend2" {
   depends_on = [proxmox_lxc.backend2]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_backend2} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_backend2}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_backend2}.conf && \
+     (pct status ${var.vmid_backend2} | grep -q running || pct start ${var.vmid_backend2})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_backend2" {
+  depends_on = [null_resource.enable_nesting_backend2]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -220,12 +274,30 @@ resource "proxmox_lxc" "backend3" {
   }
 
   unprivileged = false
-  start = true
+  start = false
   password = var.node_pass_backend
 
 }
-resource "null_resource" "setup_ssh_backend3" {
+resource "null_resource" "enable_nesting_backend3" {
   depends_on = [proxmox_lxc.backend3]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_backend3} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_backend3}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_backend3}.conf && \
+     (pct status ${var.vmid_backend3} | grep -q running || pct start ${var.vmid_backend3})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_backend3" {
+  depends_on = [null_resource.enable_nesting_backend3]
 
   provisioner "local-exec" {
     command = <<EOT

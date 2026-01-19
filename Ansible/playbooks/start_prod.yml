@@ -1,0 +1,12 @@
+---
+- name: Setup Frontend (Nginx)
+  hosts: nginx
+  become: true
+  roles:
+    - frontend
+
+- name: Setup Backend
+  hosts: backend
+  become: true
+  roles:
+    - backend
