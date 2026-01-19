@@ -20,7 +20,7 @@ pipeline {
         
         // Backend runtime configuration (non-sensitive)
         SPRING_PROFILES_ACTIVE = 'prod'
-        DB_URL = '192.168.1.204:5432/mydb'
+        DB_URL = 'jdbc:postgresql://192.168.1.204:5432/mydb'
         S3_REGION = 'us-west-1'
         BUCKET = 'my-bucket'
         EMAIL_USER = ''
