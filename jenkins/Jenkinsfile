@@ -158,10 +158,17 @@ pipeline {
                                   -e DB_LOGIN="${env.DB_LOGIN}" \\
                                   -e DB_PASSWORD="${env.DB_PASSWORD}" \\
                                   -e DB_URL="${env.DB_URL}" \\
+                                  -e SPRING_DATASOURCE_URL="${env.DB_URL}" \\
+                                  -e SPRING_DATASOURCE_USERNAME="${env.DB_LOGIN}" \\
+                                  -e SPRING_DATASOURCE_PASSWORD="${env.DB_PASSWORD}" \\
                                   -e S3_ACCESS_KEY="${env.S3_ACCESS_KEY}" \\
                                   -e S3_SECRET_KEY="${env.S3_SECRET_KEY}" \\
                                   -e S3_REGION="${env.S3_REGION}" \\
                                   -e BUCKET="${env.BUCKET}" \\
+                                  -e AWS_S3_ACCESS_KEY="${env.S3_ACCESS_KEY}" \\
+                                  -e AWS_S3_SECRET_KEY="${env.S3_SECRET_KEY}" \\
+                                  -e AWS_S3_REGION="${env.S3_REGION}" \\
+                                  -e AWS_S3_BUCKET="${env.BUCKET}" \\
                                   -e EMAIL_USER="${env.EMAIL_USER}" \\
                                   -e EMAIL_PASSWORD="${env.EMAIL_PASSWORD}" \\
                                   eclipse-temurin:17-jdk-alpine \\
