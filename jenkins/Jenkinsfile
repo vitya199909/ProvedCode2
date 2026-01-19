@@ -142,31 +142,30 @@ pipeline {
                             
                             # Extract and deploy
                             sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${host} '
-                                cd /tmp && with environment variables
-                                docker stop backend-app 2>/dev/null || true &&
-                                docker rm backend-app 2>/dev/null || true &&
+                                set -e
+                                mkdir -p /opt/backend
+                                tar -xzf /tmp/backend-build.tar.gz -C /opt/backend
+                                JAR_FILE=$(ls /opt/backend/target/*.jar | head -n 1)
+                                docker stop backend-app 2>/dev/null || true
+                                docker rm backend-app 2>/dev/null || true
                                 docker run -d \\
                                   --name backend-app \\
                                   --restart unless-stopped \\
                                   -p 8080:8080 \\
-                                  -v /opt/backend/app.jar:/app/app.jar \\
-                                  -e JAVA_OPTS=\"-Xmx512m -Xms256m\" \\
-                                  -e SPRING_PROFILES_ACTIVE=\"${SPRING_PROFILES_ACTIVE}\" \\
-                                  -e DB_LOGIN=\"${DB_LOGIN}\" \\
-                                  -e DB_PASSWORD=\"${DB_PASSWORD}\" \\
-                                  -e DB_URL=\"${DB_URL}\" \\
-                                  -e S3_ACCESS_KEY=\"${S3_ACCESS_KEY}\" \\
-                                  -e S3_SECRET_KEY=\"${S3_SECRET_KEY}\" \\
-                                  -e S3_REGION=\"${S3_REGION}\" \\
-                                  -e BUCKET=\"${BUCKET}\" \\
-                                  -e EMAIL_USER=\"${EMAIL_USER}\" \\
-                                  -e EMAIL_PASSWORD=\"${EMAIL_PASSWORD}
-                                  --restart unless-stopped \\
-                                  -p 8080:8080 \\
-                                  -v /opt/backend/app.jar:/app/app.jar \\
-                                  -e JAVA_OPTS=\"-Xmx512m -Xms256m\" \\
+                                  -v "$JAR_FILE":/app/app.jar \\
+                                  -e JAVA_OPTS="-Xmx512m -Xms256m" \\
+                                  -e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}" \\
+                                  -e DB_LOGIN="${DB_LOGIN}" \\
+                                  -e DB_PASSWORD="${DB_PASSWORD}" \\
+                                  -e DB_URL="${DB_URL}" \\
+                                  -e S3_ACCESS_KEY="${S3_ACCESS_KEY}" \\
+                                  -e S3_SECRET_KEY="${S3_SECRET_KEY}" \\
+                                  -e S3_REGION="${S3_REGION}" \\
+                                  -e BUCKET="${BUCKET}" \\
+                                  -e EMAIL_USER="${EMAIL_USER}" \\
+                                  -e EMAIL_PASSWORD="${EMAIL_PASSWORD}" \\
                                   eclipse-temurin:17-jdk-alpine \\
-                                  java -jar /app/app.jar
+                                  sh -c "java $JAVA_OPTS -jar /app/app.jar"
                             '
                         """
                     }
