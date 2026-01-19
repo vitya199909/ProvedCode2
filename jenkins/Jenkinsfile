@@ -59,8 +59,11 @@ pipeline {
                         script {
                             echo "Building Frontend on ${BUILD_FRONT_HOST}"
                             sh """
+                                # Prepare build directory
+                                sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST} 'rm -rf /tmp/frontend-build && mkdir -p /tmp/frontend-build'
+                                
                                 # Copy source code
-                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no frontend/ root@${BUILD_FRONT_HOST}:/tmp/frontend-build/
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no frontend/* root@${BUILD_FRONT_HOST}:/tmp/frontend-build/
                                 
                                 # Build using Docker with environment variables
                                 sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_FRONT_HOST} '
@@ -86,8 +89,11 @@ pipeline {
                         script {
                             echo "Building Backend on ${BUILD_BACK_HOST}"
                             sh """
+                                # Prepare build directory
+                                sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST} 'rm -rf /tmp/backend-build && mkdir -p /tmp/backend-build'
+                                
                                 # Copy source code
-                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no backend/ root@${BUILD_BACK_HOST}:/tmp/backend-build/
+                                sshpass -p '${SSH_PASS}' scp -r -o StrictHostKeyChecking=no backend/* root@${BUILD_BACK_HOST}:/tmp/backend-build/
                                 
                                 # Build using Docker Maven wrapper
                                 sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST} '
