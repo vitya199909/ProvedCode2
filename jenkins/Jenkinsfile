@@ -73,7 +73,7 @@ pipeline {
                                       -w /workspace \
                                       -e REACT_APP_BASE_URL="${REACT_APP_BASE_URL}" \
                                       node:20-alpine sh -c "npm install && npm run build" &&
-                                    tar -czf frontend-build.tar.gz dist/
+                                    tar -czf frontend-build.tar.gz build/
                                 '
                                 
                                 # Copy artifact back
