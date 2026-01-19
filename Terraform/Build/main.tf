@@ -44,8 +44,26 @@ resource "proxmox_lxc" "build_front" {
   password = var.node_pass_build
 
 }
-resource "null_resource" "setup_ssh_build_front" {
+resource "null_resource" "enable_nesting_build_front" {
   depends_on = [proxmox_lxc.build_front]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_build_front} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_build_front}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_build_front}.conf && \
+     (pct status ${var.vmid_build_front} | grep -q running || pct start ${var.vmid_build_front})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_build_front" {
+  depends_on = [null_resource.enable_nesting_build_front]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -103,8 +121,26 @@ resource "proxmox_lxc" "build_back" {
   password = var.node_pass_build
 
 }
-resource "null_resource" "setup_ssh_build_back" {
+resource "null_resource" "enable_nesting_build_back" {
   depends_on = [proxmox_lxc.build_back]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_build_back} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_build_back}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_build_back}.conf && \
+     (pct status ${var.vmid_build_back} | grep -q running || pct start ${var.vmid_build_back})"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_build_back" {
+  depends_on = [null_resource.enable_nesting_build_back]
 
   provisioner "local-exec" {
     command = <<EOT

@@ -57,7 +57,7 @@ ssh -o StrictHostKeyChecking=no \
     "pct set ${var.vmid_jenkins} -features nesting=1,keyctl=1 && \
      echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_jenkins}.conf && \
      echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_jenkins}.conf && \
-     pct start ${var.vmid_jenkins}"
+     (pct status ${var.vmid_jenkins} | grep -q running || pct start ${var.vmid_jenkins})"
 EOT
   }
 }

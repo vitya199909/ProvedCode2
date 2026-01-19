@@ -1,5 +1,5 @@
 ---
-- name: Ensure necessary packages for building Node.js are installed
+- name: Ensure necessary packages are installed
   apk:
     name:
       - bash
@@ -7,54 +7,66 @@
       - unzip
       - git
       - zip
-      - python3
-      - python3-dev
-      - py3-setuptools
-      - linux-headers
-      - make
-      - g++
-      - libstdc++
+      - docker
     state: present
 
-- name: Install nvm
-  shell: |
-    export NVM_DIR="$HOME/.nvm"
-    if [ ! -d "$NVM_DIR" ]; then
-      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
-    fi
-  args:
-    executable: /bin/bash
+- name: Enable and start Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
 
-- name: Install Node.js {{ node_version }} via nvm
-  shell: |
-    export NVM_DIR="$HOME/.nvm"
-    . "$NVM_DIR/nvm.sh"
-    nvm install {{ node_version }}
-    nvm alias default {{ node_version }}
-    nvm use {{ node_version }}
-  args:
-    executable: /bin/bash
+- name: Pull Node.js 18 Docker image
+  command: docker pull node:18-alpine
+
+- name: Create node wrapper script
+  copy:
+    dest: /usr/local/bin/node
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      docker run --rm -i \
+        -v "$(pwd)":/workspace \
+        -w /workspace \
+        node:18-alpine \
+        node "$@"
+
+- name: Create npm wrapper script
+  copy:
+    dest: /usr/local/bin/npm
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      docker run --rm -i \
+        -v "$(pwd)":/workspace \
+        -v "$HOME/.npm":/root/.npm \
+        -w /workspace \
+        node:18-alpine \
+        npm "$@"
+
+- name: Create npx wrapper script
+  copy:
+    dest: /usr/local/bin/npx
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      docker run --rm -i \
+        -v "$(pwd)":/workspace \
+        -v "$HOME/.npm":/root/.npm \
+        -w /workspace \
+        node:18-alpine \
+        npx "$@"
 
 - name: Check Node version
-  shell: |
-    export NVM_DIR="$HOME/.nvm"
-    . "$NVM_DIR/nvm.sh"
-    node -v
+  command: docker run --rm node:18-alpine node -v
   register: node_version_out
-  args:
-    executable: /bin/bash
 
 - name: Check NPM version
-  shell: |
-    export NVM_DIR="$HOME/.nvm"
-    . "$NVM_DIR/nvm.sh"
-    npm -v
+  command: docker run --rm node:18-alpine npm -v
   register: npm_version_out
-  args:
-    executable: /bin/bash
 
 - name: Show installed versions
   debug:
     msg:
-      - "Node version: {{ node_version_out.stdout }}"
-      - "NPM version: {{ npm_version_out.stdout }}"
+      - "Node version (Docker): {{ node_version_out.stdout }}"
+      - "NPM version (Docker): {{ npm_version_out.stdout }}"

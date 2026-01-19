@@ -6,24 +6,60 @@
         - unzip
         - git
         - zip
+        - docker
       state: present
 
-  - name: Install OpenJDK 17
-    apk:
-      name: openjdk17
-      state: present
+  - name: Enable and start Docker
+    service:
+      name: docker
+      state: started
+      enabled: yes
 
-  - name: Add Java 17 to PATH
-    lineinfile:
-      path: /etc/profile
-      line: 'export PATH=/usr/lib/jvm/java-17-openjdk/bin:$PATH'
-      state: present
+  - name: Pull Java 17 Docker image
+    command: docker pull eclipse-temurin:17-jdk-alpine
 
-  - name: Check installed Java version
-    command: java -version
+  - name: Create Java wrapper script
+    copy:
+      dest: /usr/local/bin/java
+      mode: '0755'
+      content: |
+        #!/bin/sh
+        docker run --rm -i \
+          -v "$(pwd)":/workspace \
+          -w /workspace \
+          eclipse-temurin:17-jdk-alpine \
+          java "$@"
+
+  - name: Create javac wrapper script
+    copy:
+      dest: /usr/local/bin/javac
+      mode: '0755'
+      content: |
+        #!/bin/sh
+        docker run --rm -i \
+          -v "$(pwd)":/workspace \
+          -w /workspace \
+          eclipse-temurin:17-jdk-alpine \
+          javac "$@"
+
+  - name: Create mvn wrapper script
+    copy:
+      dest: /usr/local/bin/mvn
+      mode: '0755'
+      content: |
+        #!/bin/sh
+        docker run --rm -i \
+          -v "$(pwd)":/workspace \
+          -v "$HOME/.m2":/root/.m2 \
+          -w /workspace \
+          maven:3.9-eclipse-temurin-17-alpine \
+          mvn "$@"
+
+  - name: Check Docker Java version
+    command: docker run --rm eclipse-temurin:17-jdk-alpine java -version
     register: java_version_output
     ignore_errors: yes
 
   - name: Show installed Java version
     debug:
-      msg: "Java version: {{ java_version_output.stderr_lines }}"
+      msg: "Java version (Docker): {{ java_version_output.stderr_lines }}"
