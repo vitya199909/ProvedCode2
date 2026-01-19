@@ -72,7 +72,7 @@ pipeline {
                                       -v "\$(pwd)":/workspace \
                                       -w /workspace \
                                       -e REACT_APP_BASE_URL="${REACT_APP_BASE_URL}" \
-                                      node:18-alpine sh -c "npm install && npm run build" &&
+                                      node:20-alpine sh -c "npm install && npm run build" &&
                                     tar -czf frontend-build.tar.gz dist/
                                 '
                                 
@@ -98,7 +98,13 @@ pipeline {
                                 # Build using Docker Maven wrapper
                                 sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no root@${BUILD_BACK_HOST} '
                                     cd /tmp/backend-build &&
-                                    docker run --rm -v "\$(pwd)":/workspace -v "\$HOME/.m2":/root/.m2 -w /workspace maven:3.9-eclipse-temurin-17-alpine mvn clean package &&
+                                    docker run --rm \
+                                      -v "\$(pwd)":/workspace \
+                                      -v "\$HOME/.m2":/root/.m2 \
+                                      -w /workspace \
+                                      --network host \
+                                      maven:3.9-eclipse-temurin-17-alpine \
+                                      mvn clean package -DskipTests &&
                                     tar -czf backend-build.tar.gz target/*.jar
                                 '
                                 
