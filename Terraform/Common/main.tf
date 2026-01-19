@@ -28,7 +28,7 @@ resource "proxmox_lxc" "jenkins" {
   
   rootfs {
     storage = var.proxmox_disk
-    size    = "5G"
+    size    = "20G"
   }
   
   network {
@@ -40,12 +40,30 @@ resource "proxmox_lxc" "jenkins" {
   }
 
   unprivileged = false
-  start = true
+  start = false
   password = var.node_pass_jenkins
 
 }
-resource "null_resource" "setup_ssh_jenkins" {
+resource "null_resource" "enable_nesting" {
   depends_on = [proxmox_lxc.jenkins]
+
+  provisioner "local-exec" {
+    command = <<EOT
+sshpass -p "${var.proxmox_password}" \
+ssh -o StrictHostKeyChecking=no \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    root@${var.proxmox_host} \
+    "pct set ${var.vmid_jenkins} -features nesting=1,keyctl=1 && \
+     echo 'lxc.apparmor.profile: unconfined' >> /etc/pve/lxc/${var.vmid_jenkins}.conf && \
+     echo 'lxc.cap.drop:' >> /etc/pve/lxc/${var.vmid_jenkins}.conf && \
+     pct start ${var.vmid_jenkins}"
+EOT
+  }
+}
+
+resource "null_resource" "setup_ssh_jenkins" {
+  depends_on = [null_resource.enable_nesting]
 
   provisioner "local-exec" {
     command = <<EOT
