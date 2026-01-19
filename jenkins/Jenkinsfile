@@ -12,8 +12,8 @@ pipeline {
         
         // Git configuration
         GIT_BRANCH = 'main'
-        FRONTEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-frontend-vitya199909.git'
-        BACKEND_REPO = 'https://github.com/DevOps-ProjectLevel/provedcode-backend-vitya199909.git'
+        FRONTEND_REPO = 'git@github.com:DevOps-ProjectLevel/provedcode-frontend-vitya199909.git'
+        BACKEND_REPO = 'git@github.com:DevOps-ProjectLevel/provedcode-backend-vitya199909.git'
         
         // Frontend build configuration
         REACT_APP_BASE_URL = 'http://192.168.1.200/api'

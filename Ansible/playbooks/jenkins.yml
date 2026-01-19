@@ -172,3 +172,9 @@
           - "Add this SSH key to GitHub Deploy Keys:"
           - "{{ jenkins_public_key.stdout }}"
           - "==============================================="
+
+    - name: Configure Git to accept GitHub host key
+      shell: |
+        docker exec -u jenkins jenkins bash -c "
+          ssh-keyscan github.com >> /var/jenkins_home/.ssh/known_hosts 2>/dev/null
+        "
