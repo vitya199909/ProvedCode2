@@ -86,6 +86,15 @@
         privs: ALL
         login_user: postgres
 
+    - name: Grant schema privileges to user
+      community.postgresql.postgresql_privs:
+        database: "{{ hostvars[inventory_hostname].postgres_db }}"
+        roles: "{{ hostvars[inventory_hostname].postgres_user }}"
+        type: schema
+        objs: public
+        privs: ALL
+        login_user: postgres
+
     - name: Check PostgreSQL is up
       community.postgresql.postgresql_ping:
         login_user: "{{ hostvars[inventory_hostname].postgres_user }}"
