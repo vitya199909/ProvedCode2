@@ -21,6 +21,7 @@ pipeline {
         // Backend runtime configuration (non-sensitive)
         SPRING_PROFILES_ACTIVE = 'prod'
         DB_URL = '192.168.1.204:5432/mydb'
+        SPRING_DATASOURCE_URL = 'jdbc:postgresql://192.168.1.204:5432/mydb'
         S3_REGION = 'us-west-1'
         BUCKET = 'my-bucket'
         EMAIL_USER = ''
@@ -158,7 +159,7 @@ pipeline {
                                   -e DB_LOGIN="${env.DB_LOGIN}" \\
                                   -e DB_PASSWORD="${env.DB_PASSWORD}" \\
                                   -e DB_URL="${env.DB_URL}" \\
-                                  -e SPRING_DATASOURCE_URL="${env.DB_URL}" \\
+                                  -e SPRING_DATASOURCE_URL="${env.SPRING_DATASOURCE_URL}" \\
                                   -e SPRING_DATASOURCE_USERNAME="${env.DB_LOGIN}" \\
                                   -e SPRING_DATASOURCE_PASSWORD="${env.DB_PASSWORD}" \\
                                   -e S3_ACCESS_KEY="${env.S3_ACCESS_KEY}" \\
